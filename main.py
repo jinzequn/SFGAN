@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 import tensorlayer as tl
+from tensorlayer.layers import *
 slim = tf.contrib.slim
 
 
@@ -15,18 +16,29 @@ def data_loader(root):
 
     return x,y
 
-def Encoder(x):
+def Encoder(Inputs, is_train=True, reuse=None):
     # C16 - C32 - C64 - C128 - C256 - C512 - C512
-    # x is 256x256 tensor
-    with tf.variable_scope("G") as vs:
-        z = tf.nn.conv2d()
-        #relu
-        net = tf.nn.conv2d()
-        net = tf.nn.conv2d()
-        net = tf.nn.conv2d()
-        net = tf.nn.conv2d()
-        net = tf.nn.conv2d()
-        net = tf.nn.conv2d() 
+    # 256x256 - 256x256 - 128x128 - 128x128 - 64x64 - 32x32 - 16x16
+    w_init = tf.random_normal_initializer(stddev=0.02)
+    b_init = tf.constant_initializer(value=0.01)
+    g_init = tf.random_normal_initializer(1., 0.02)
+
+    with tf.variable_scope("G", reuse=reuse) as vs:
+        tl.layers.set_name_resuse(reuse)
+        n = tl.layers.InputLayer(Inputs, name = 'in')
+        net_c16 = tl.layers.conv2d(n, 16, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                   B_init=b_init, name='g_1c')
+        net_c32 = tl.layers.conv2d(net_c16, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                   B_init=b_init, name='g_2c')
+        net_c64 = tl.layers.conv2d(net_c32, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                   B_init=b_init, name='g_3c')
+        net_c128 = tl.layers.conv2d(net_c64, 128, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                    B_init=b_init, name='g_4c')
+        net_c256 = tl.layers.conv2d(net_c128, 256, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                    B_init=b_init, name='g_5c')
+        net_c512 = tl.layers.conv2d(net_c256, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+                                    B_init=b_init, name='g_6c')
+        net_c512 = tl.layers.conv2d(net_c512, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAMW', W_init=w_init, B_init = b_init, name = 'g_7c')
 
     # z is 112 tensor
     z = []
