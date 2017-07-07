@@ -73,7 +73,7 @@ def Decoder(inputs, reuse=None):
     b_init = tf.constant_initializer(value=0.01)
     g_init = tf.random_normal_initializer(1., 0.02)
 
-    with tf.variable_scope("D") as vs :
+    with tf.variable_scope("D") as vs:
         tl.layers.set_name_resuse(reuse)
         n = tl.layers.InputLayer(inputs, name='in')
         # 16x16
@@ -95,18 +95,17 @@ def Decoder(inputs, reuse=None):
         net_c4 = tl.layers.conv2d(net_upsca3, 128, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     B_init=b_init, name='d_c4')
         net_bn4 = tl.layers.BatchNormLayer(net_c4, act=tf.identity, gamma_init=g_init, name='d_bn4')
-        net_upsca4 = upscale2d(net_bn4)
-        # 256x256
-        net_c5 = tl.layers.Conv2d(net_upsca4, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+        # 128x128
+        net_c5 = tl.layers.Conv2d(net_bn4, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     B_init=b_init, name='d_c5')
         net_bn5 = tl.layers.BatchNormLayer(net_c5, act=tf.identity, gamma_init=g_init, name='d_bn5')
-        net_upsca5 = upscale2d(net_bn5)
-        # 512x512
-        net_c6 = tl.layers.conv2d(net_upsca5, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+        net_upsca4 = upscale2d(net_bn5)
+        # 256x256
+        net_c6 = tl.layers.conv2d(net_upsca4, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     B_init=b_init, name='d_c6')
         net_bn6 = tl.layers.BatchNormLayer(net_c6, act=tf.identity, gamma_init=g_init, name='d_bn6')
 
-        # 512x512
+        # 256x256
         net_c512 = tl.layers.conv2d(net_bn6, 3, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init,
                                     B_init=b_init, name='d_c7')
 
