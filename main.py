@@ -11,14 +11,23 @@ def upscale2d(x):
     x = tf.image.resize_nearest_neighbor(x, (h*2, w*2))
     return x
 
-def data_loader():
+def data_loader(filename):
+    filename_queue = tf.train.string_input_producer([filename])
 
-    # dataset_name = os.path.basename(root)
-    # #x = Image
-    x = []
-    # #y = Label
-    y = []
-    return x, y
+    reader = tf.TFRecordReader()
+    _, serialized_example = reader.read(filename_queue)
+    features = tf.parse_single_example(serialized_example,
+                                       features={
+                                           'label': tf.FixedLenFeature([], tf.int64),
+                                           'img_raw': tf.FixedLenFeature([], tf.string),
+                                       })
+
+    img = tf.decode_raw(features['img_raw'], tf.uint8)
+    img = tf.reshape(img, [256, 256, 3])
+    img = tf.cast(img, tf.float32) * (1. / 255) - 0.5
+    label = tf.cast(features['label'], tf.int32)
+    return img, label
+
 
 def Encoder(Inputs, is_train=True, reuse=None):
 
@@ -69,7 +78,7 @@ def Encoder(Inputs, is_train=True, reuse=None):
                                     B_init=b_init, name='g_c7')
     variables = tf.contrib.framework.get_variables(vs)
     output = net_c512
-    return output
+    return output, variables
 
 
 def Decoder(inputs, reuse=None):
@@ -139,11 +148,14 @@ def Discriminator(x):
 
 
 def model(x, y):
+    Enc_z = Encoder(x)
+    Dis_z = Discriminator(Enc_z)
+    Dec_z = Decoder(Enc_z)
 
-    # encoder
+    Dec_loss = tf.reduce_mean(tf.abs(Dec_z - x))
+    Dis_loss = tl.cost.cross_entropy(Dis_z, y)
 
-    # decoder
-    return 0
+    return Dec_loss, Dis_loss
 
 def trainer():
     optimizer = tf.train.AdamOptimizer
