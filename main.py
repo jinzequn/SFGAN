@@ -32,35 +32,35 @@ def Encoder(Inputs, is_train=True, reuse=None):
         n = tl.layers.InputLayer(Inputs, name='in')
         #256x256
         net_c16 = tl.layers.conv2d(n, 16, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                   B_init=b_init, name='g_1c')
-        net_bn1 = tl.layers.BatchNormLayer(net_c16, act=tf.identity, gamma_init=g_init, name='g_1bn')
+                                   B_init=b_init, name='g_c1')
+        net_bn1 = tl.layers.BatchNormLayer(net_c16, act=tf.identity, gamma_init=g_init, name='g_bn1')
         #256x256
         net_c32 = tl.layers.conv2d(net_bn1, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                   B_init=b_init, name='g_2c')
-        net_bn2 = tl.layers.BatchNormLayer(net_c32, act=tf.identity, gamma_init=g_init, name='g_2bn')
-        net_pool1 = tl.layers.MaxPool2d(net_bn2,filter_size=(2, 2), name='g_1pool')
+                                   B_init=b_init, name='g_c2')
+        net_bn2 = tl.layers.BatchNormLayer(net_c32, act=tf.identity, gamma_init=g_init, name='g_bn2')
+        net_pool1 = tl.layers.MaxPool2d(net_bn2,filter_size=(2, 2), name='g_pool1')
         #128x128
         net_c64 = tl.layers.conv2d(net_pool1, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                   B_init=b_init, name='g_3c')
-        net_bn3 = tl.layers.BatchNormLayer(net_c64, act=tf.identity, gamma_init=g_init, name='g_3bn')
+                                   B_init=b_init, name='g_c3')
+        net_bn3 = tl.layers.BatchNormLayer(net_c64, act=tf.identity, gamma_init=g_init, name='g_bn3')
         #128x128
         net_c128 = tl.layers.conv2d(net_bn3, 128, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_4c')
-        net_bn4 = tl.layers.BatchNormLayer(net_c128, act=tf.identity, gamma_init=g_init, name='g_4bn')
-        net_pool2 = tl.layers.MaxPool2d(net_bn4, filter_size=(2, 2), name='g_2pool')
+                                    B_init=b_init, name='g_c4')
+        net_bn4 = tl.layers.BatchNormLayer(net_c128, act=tf.identity, gamma_init=g_init, name='g_bn4')
+        net_pool2 = tl.layers.MaxPool2d(net_bn4, filter_size=(2, 2), name='g_pool2')
         #64x64
         net_c256 = tl.layers.conv2d(net_pool2, 256, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_5c')
+                                    B_init=b_init, name='g_c5')
         net_bn5 = tl.layers.BatchNormLayer(net_c256, act=tf.identity, gamma_init=g_init, name='g_bn5')
-        net_pool3 = tl.layers.MaxPool2d(net_bn5, filter_size=(2, 2), name='g_3pool')
+        net_pool3 = tl.layers.MaxPool2d(net_bn5, filter_size=(2, 2), name='g_pool3')
         #32x32
         net_c512 = tl.layers.conv2d(net_pool3, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_6c')
+                                    B_init=b_init, name='g_c6')
         net_bn6 = tl.layers.BatchNormLayer(net_c512, act=tf.identity, gamma_init=g_init, name='g_bn6')
-        net_pool4 = tl.layers.MaxPool2d(net_bn6, filter_size=(2, 2), name='g_4pool')
+        net_pool4 = tl.layers.MaxPool2d(net_bn6, filter_size=(2, 2), name='g_pool4')
         #16x16
         net_c512 = tl.layers.conv2d(net_pool4, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_7c')
+                                    B_init=b_init, name='g_c7')
     variables = tf.contrib.framework.get_variables(vs)
     output = net_c512
     return output
@@ -103,12 +103,12 @@ def Decoder(inputs, reuse=None):
         net_upsca5 = upscale2d(net_bn5)
         # 512x512
         net_c6 = tl.layers.conv2d(net_upsca5, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_c6')
-        net_bn6 = tl.layers.BatchNormLayer(net_c6, act=tf.identity, gamma_init=g_init, name='g_bn6')
+                                    B_init=b_init, name='d_c6')
+        net_bn6 = tl.layers.BatchNormLayer(net_c6, act=tf.identity, gamma_init=g_init, name='d_bn6')
 
         # 512x512
         net_c512 = tl.layers.conv2d(net_bn6, 3, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init,
-                                    B_init=b_init, name='g_c7')
+                                    B_init=b_init, name='d_c7')
 
     variables = tf.contrib.framework.get_variables(vs)
     output = net_c512
