@@ -21,6 +21,12 @@ def data_loader():
     return x, y
 
 def Encoder(Inputs, is_train=True, reuse=None):
+
+    '''
+
+    Input a 256x256 image and output a 16x16 tensor
+
+    '''
     # C16 - C32 - C64 - C128 - C256 - C512 - C512
     # 256x256 - 256x256 - 128x128 - 128x128 - 64x64 - 32x32 - 16x16
     w_init = tf.random_normal_initializer(stddev=0.02)
@@ -67,6 +73,12 @@ def Encoder(Inputs, is_train=True, reuse=None):
 
 
 def Decoder(inputs, reuse=None):
+
+    '''
+
+    input a 16x16 tensor and output is a 256x256 image
+
+    '''
     # C512+2N - C512+2N - C256+2N - C128+2N - C64+2N - C32+2N - C16+2N  
     # x_de is a 256x256 image
     w_init = tf.random_normal_initializer(stddev=0.02)
@@ -114,11 +126,16 @@ def Decoder(inputs, reuse=None):
     return output, variables
 
 def Discriminator(x):
-
     # Z = C512+2N
+    # C512 + FC512 + FC112 + 1
+    w_init = tf.random_normal_initializer(stddev=0.02)
+    b_init = tf.constant_initializer(value=0.01)
+    net_1 = tl.layers.DenseLayer(x, n_units=512, act=tf.identity, W_init=w_init, b_init=b_init, name='dense_layer1')
+    net_2 = tl.layers.DenseLayer(net_1, n_units=112, act=tf.identity, W_init=w_init, b_init=b_init, name="dense_layer2")
+    net_3 = tl.layers.DenseLayer(net_2, n_units=1, act=tf.identity, W_init=w_init, b_init=b_init, name='dense_layer3')
+    output = net_3
 
-    # C512 + FC512 + 1
-    return 
+    return output
 
 
 def model(x, y):

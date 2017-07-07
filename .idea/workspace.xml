@@ -25,8 +25,8 @@
       <file leaf-file-name="main.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1336">
-              <caret line="114" column="0" lean-forward="true" selection-start-line="114" selection-start-column="0" selection-end-line="114" selection-end-column="0" />
+            <state relative-caret-position="352">
+              <caret line="138" column="0" lean-forward="true" selection-start-line="138" selection-start-column="0" selection-end-line="138" selection-end-column="0" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -298,7 +298,14 @@
       <option name="project" value="LOCAL" />
       <updated>1499396069831</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="fix some bugs">
+      <created>1499398238932</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1499398238932</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -335,7 +342,8 @@
     <MESSAGE value="add BatchNormLayer" />
     <MESSAGE value="Encoder" />
     <MESSAGE value="Decoder" />
-    <option name="LAST_COMMIT_MESSAGE" value="Decoder" />
+    <MESSAGE value="fix some bugs" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix some bugs" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -394,16 +402,24 @@
     </entry>
     <entry file="file:///usr/local/lib/python2.7/dist-packages/tensorlayer/layers.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-3720">
+        <state relative-caret-position="-1848">
           <caret line="1845" column="8" lean-forward="false" selection-start-line="1845" selection-start-column="8" selection-end-line="1845" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/lib/python2.7/dist-packages/tensorflow/python/ops/init_ops.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="205">
+          <caret line="77" column="4" lean-forward="false" selection-start-line="77" selection-start-column="4" selection-end-line="77" selection-end-column="4" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1336">
-          <caret line="114" column="0" lean-forward="true" selection-start-line="114" selection-start-column="0" selection-end-line="114" selection-end-column="0" />
+        <state relative-caret-position="352">
+          <caret line="138" column="0" lean-forward="true" selection-start-line="138" selection-start-column="0" selection-end-line="138" selection-end-column="0" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
