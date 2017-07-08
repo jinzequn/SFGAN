@@ -3,16 +3,13 @@ import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 slim = tf.contrib.slim
-import numpy as np
 
-def int_shape(tensor):
-    shape = tensor.get_shape().as_list()
-    return [num if num is not None else -1 for num in shape]
 
-def upscale2d(tensor):
-    shape = int_shape(tensor)
-    _, h, w, _ = shape(tensor)
-    x = tf.image.resize_nearest_neighbor(tensor, (h*2, w*2))
+def upscale2d(x):
+    x = x.outputs
+    size = x.get_shape().as_list()
+    x = tf.image.resize_nearest_neighbor(x, (size[1]*2, size[2]*2))
+    x = InputLayer(x)
     return x
 
 def data_loader(filename):
@@ -105,39 +102,38 @@ def Decoder(inputs, reuse=None):
         # 16x16
         net_c1 = Conv2d(n, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                    b_init=b_init, name='d_c1')
-        # net_bn1 = BatchNormLayer(net_c1, act=tf.identity, gamma_init=g_init, name='d_bn1')
-
-        net_upsca1 = upscale2d(net_c1)
+        net_bn1 = BatchNormLayer(net_c1, act=tf.identity, gamma_init=g_init, name='d_bn1')
+        net_upsca1 = upscale2d(net_bn1)
         #32x32
         net_c2 = Conv2d(net_upsca1, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                    b_init=b_init, name='d_c2')
-        # net_bn2 = BatchNormLayer(net_c2, act=tf.identity, gamma_init=g_init, name='d_bn2')
-        net_upsca2 = upscale2d(net_c2)
+        net_bn2 = BatchNormLayer(net_c2, act=tf.identity, gamma_init=g_init, name='d_bn2')
+        net_upsca2 = upscale2d(net_bn2)
         # 64x64
         net_c3 = Conv2d(net_upsca2, 256, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                    b_init=b_init, name='d_c3')
-        # net_bn3 = BatchNormLayer(net_c3, act=tf.identity, gamma_init=g_init, name='d_bn3')
-        net_upsca3 = upscale2d(net_c3)
+        net_bn3 = BatchNormLayer(net_c3, act=tf.identity, gamma_init=g_init, name='d_bn3')
+        net_upsca3 = upscale2d(net_bn3)
         # 128x128
         net_c4 = Conv2d(net_upsca3, 128, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='d_c4')
-        # net_bn4 = BatchNormLayer(net_c4, act=tf.identity, gamma_init=g_init, name='d_bn4')
+        net_bn4 = BatchNormLayer(net_c4, act=tf.identity, gamma_init=g_init, name='d_bn4')
         # 128x128
-        net_c5 = Conv2d(net_c4, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
+        net_c5 = Conv2d(net_bn4, 64, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='d_c5')
-        # net_bn5 = BatchNormLayer(net_c5, act=tf.identity, gamma_init=g_init, name='d_bn5')
-        net_upsca4 = upscale2d(net_c5)
+        net_bn5 = BatchNormLayer(net_c5, act=tf.identity, gamma_init=g_init, name='d_bn5')
+        net_upsca4 = upscale2d(net_bn5)
         # 256x256
         net_c6 = Conv2d(net_upsca4, 32, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='d_c6')
-        # net_bn6 = BatchNormLayer(net_c6, act=tf.identity, gamma_init=g_init, name='d_bn6')
+        net_bn6 = BatchNormLayer(net_c6, act=tf.identity, gamma_init=g_init, name='d_bn6')
 
         # 256x256
-        net_c512 = Conv2d(net_c6, 3, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init,
+        net_c512 = Conv2d(net_bn6, 3, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='d_c7')
 
     variables = tf.contrib.framework.get_variables(vs)
-    output = net_c512
+    output = net_c512.outputs
     return output, variables
 
 
@@ -155,7 +151,7 @@ def Discriminator(inputs):
         net_3 = DenseLayer(net_2, n_units=1, act=tf.identity, W_init=w_init, b_init=b_init, name='dense_layer3')
 
     variables = tf.contrib.framework.get_variables(vs)
-    output = net_3
+    output = net_3.outputs
     return output, variables
 
 
