@@ -9,7 +9,8 @@ def upscale2d(x):
     x = x.outputs
     size = x.get_shape().as_list()
     x = tf.image.resize_nearest_neighbor(x, (size[1]*2, size[2]*2))
-    x = InputLayer(x)
+    x = InputLayer(x, name='upscale_inputs')
+    tl.layers.set_name_reuse(True)
     return x
 
 def data_loader(filename):
@@ -26,7 +27,8 @@ def data_loader(filename):
     img = tf.decode_raw(features['img_raw'], tf.uint8)
     img = tf.reshape(img, [-1, 256, 256, 3])
     img = tf.cast(img, tf.float32) * (1. / 255) - 0.5
-    label = tf.cast(features['label'], tf.int32)
+    label = tf.cast(features['label'], tf.float32)
+    label = tf.reshape(label, [-1, 1])
     return img, label
 
 
@@ -43,8 +45,8 @@ def Encoder(Inputs, is_train=True, reuse=None):
     b_init = tf.constant_initializer(value=0.01)
     g_init = tf.random_normal_initializer(1., 0.02)
 
-    with tf.variable_scope("G") as vs:
-
+    with tf.variable_scope("G", reuse=reuse) as vs:
+        tl.layers.set_name_reuse(reuse)
         n = InputLayer(Inputs, name='in')
         #256x256
         net_c16 = Conv2d(n, 16, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
@@ -96,8 +98,8 @@ def Decoder(inputs, is_train=True, reuse=None):
     b_init = tf.constant_initializer(value=0.01)
     g_init = tf.random_normal_initializer(1., 0.02)
 
-    with tf.variable_scope("D") as vs:
-        set_name_reuse(reuse)
+    with tf.variable_scope("D", reuse=reuse) as vs:
+        tl.layers.set_name_reuse(reuse)
         n = InputLayer(inputs, name='in')
         # 16x16
         net_c1 = Conv2d(n, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
@@ -137,13 +139,14 @@ def Decoder(inputs, is_train=True, reuse=None):
     return output, variables
 
 
-def Discriminator(inputs):
+def Discriminator(inputs, reuse=False):
     # Z = C512+2N
     # C512 + FC512 + FC112 + 1
     w_init = tf.random_normal_initializer(stddev=0.02)
     b_init = tf.constant_initializer(value=0.01)
 
-    with tf.variable_scope("Di") as vs:
+    with tf.variable_scope("Di", reuse=reuse) as vs:
+        tl.layers.set_name_reuse(reuse)
         n = InputLayer(inputs, name='input_layer')
         net = FlattenLayer(n, name='flatten')
         net_1 = DenseLayer(net, n_units=512, act=tf.identity, W_init=w_init, b_init=b_init, name='dense_layer1')
@@ -156,18 +159,18 @@ def Discriminator(inputs):
 
 
 def model(x, y):
-    Enc_z, Enc_val = Encoder(x)
-    Dis_z, Dis_val = Discriminator(Enc_z)
-    Dec_z, Dec_val = Decoder(Enc_z)
-
-    Dec_loss = tf.reduce_mean(tf.abs(Dec_z - x))
-    Dis_loss = tl.cost.cross_entropy(Dis_z, y)
+    Enc_z, Enc_val = Encoder(x, is_train=True, reuse=False)
+    Dis_z, Dis_val = Discriminator(Enc_z, reuse=False)
+    Dec_z, Dec_val = Decoder(Enc_z, is_train=True, reuse=False)
+    # Dec_loss = tf.reduce_mean(tf.abs(Dec_z - x))
+    Dec_loss = tl.cost.mean_squared_error(Dec_z, x)
+    Dis_loss = tl.cost.sigmoid_cross_entropy(Dis_z, y, name='discriminator_loss')
 
     return Dec_loss, Dis_loss
 
 
 def main():
-    x, y=data_loader('face_train.tfrecords')
+    x, y = data_loader('face_train.tfrecords')
     Dec_loss, Dis_loss = model(x, y)
     optimizer = tf.train.AdamOptimizer
     
