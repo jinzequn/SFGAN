@@ -3,7 +3,7 @@ import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 slim = tf.contrib.slim
-
+import random
 
 def upscale2d(x):
     x = x.outputs
@@ -159,21 +159,45 @@ def Discriminator(inputs, reuse=False):
 
 
 def model(x, y):
-    Enc_z, Enc_val = Encoder(x, is_train=True, reuse=False)
-    Dis_z, Dis_val = Discriminator(Enc_z, reuse=False)
-    Dec_z, Dec_val = Decoder(Enc_z, is_train=True, reuse=False)
-    # Dec_loss = tf.reduce_mean(tf.abs(Dec_z - x))
-    Dec_loss = tl.cost.mean_squared_error(Dec_z, x)
-    Dis_loss = tl.cost.sigmoid_cross_entropy(Dis_z, y, name='discriminator_loss')
+    Enc_z_fake, Enc_val_fake = Encoder(x, is_train=True, reuse=False)
+    Enc_z_real, Enc_val_real = Encoder(x, is_train=False, reuse=True)
 
-    return Dec_loss, Dis_loss
+    Dis_z_fake, Dis_val_fake = Discriminator(Enc_z_fake, reuse=False)
+    Dis_z_real, Dis_val_real = Discriminator(Enc_z_real, reuse=True)
+
+    Dec_z, Dec_val = Decoder(Enc_z_fake, is_train=True, reuse=False)
+
+    Dis_loss_fake = tl.cost.sigmoid_cross_entropy(Dis_z_fake, y, name='discriminator_loss_fake')
+    Dis_loss_real = tl.cost.sigmoid_cross_entropy(Dis_z_real, y, name='discriminator_loss_real')
+    Dis_loss = Dis_loss_fake+Dis_loss_real
+
+    Dec_loss = tl.cost.mean_squared_error(Dec_z, x)
+    return Dec_loss, Dis_loss, Dec_val, Dis_val_fake
 
 
 def main():
-    x, y = data_loader('face_train.tfrecords')
-    Dec_loss, Dis_loss = model(x, y)
-    optimizer = tf.train.AdamOptimizer
-    
+    learning_rate = 10e-5
+
+    real_image = tf.placeholder('float', shape=[None, 256, 256, 3], name='real_image_inputs')
+    label = tf.placeholder('float', shape=[None, 1], name='real_label_inputs')
+
+
+
+    real_image, label = data_loader('face_train.tfrecords')
+
+
+
+    Dec_loss, Dis_loss, Dec_val, Dis_val = model(real_image, label)
+
+    Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss, var_list=Dec_val)
+    Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss, var_list=Dis_val)
+
+    sess = tf.InteractiveSession()
+    tl.layers.initialize_global_variables(sess)
+
+    model_dir = 'model'
+    save_dir = 'result'
+
 
 if __name__ == '__main__':
     main()
