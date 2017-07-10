@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 slim = tf.contrib.slim
+import numpy as np
 import random
 
 def upscale2d(x):
@@ -25,10 +26,11 @@ def data_loader(filename):
                                        })
 
     img = tf.decode_raw(features['img_raw'], tf.uint8)
-    img = tf.reshape(img, [-1, 256, 256, 3])
+    img = tf.reshape(img, [256, 256, 3])
     img = tf.cast(img, tf.float32) * (1. / 255) - 0.5
     label = tf.cast(features['label'], tf.float32)
-    label = tf.reshape(label, [-1, 1])
+    label = tf.reshape(label, [1])
+    label = tf.cast(label, tf.float32)
     return img, label
 
 
@@ -89,7 +91,7 @@ def Decoder(inputs, is_train=True, reuse=None):
 
     '''
 
-    input a 16x16 tensor and output is a 256x256 image
+    input a 16x16 tensor and output a 256x256 image
 
     '''
     # C512+2N - C512+2N - C256+2N - C128+2N - C64+2N - C32+2N - C16+2N  
@@ -178,26 +180,39 @@ def model(x, y):
 def main():
     learning_rate = 10e-5
 
-    real_image = tf.placeholder('float', shape=[None, 256, 256, 3], name='real_image_inputs')
-    label = tf.placeholder('float', shape=[None, 1], name='real_label_inputs')
+    real_image_data, label_data = data_loader('train.tfrecords')
 
+    img_batch, label_batch = tf.train.shuffle_batch([real_image_data, label_data],
+                                                    batch_size=1,
+                                                    capacity=2,
+                                                    min_after_dequeue=1
+                                                    )
+    # img_batch, label_batch = tf.train.batch([real_image_data, label_data], 16)
+    print("img_batch   : %s" % img_batch._shape)
+    print("label_batch : %s" % label_batch._shape)
 
+    Dec_loss, Dis_loss, Dec_val, Dis_val = model(img_batch, label_batch)
 
-    real_image, label = data_loader('face_train.tfrecords')
+    Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss,
+                                                                                                var_list=Dec_val)
+    Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss,
+                                                                                                var_list=Dis_val)
+    with tf.Session() as sess:
+        # tl.layers.initialize_global_variables(sess)
+        sess.run(tf.local_variables_initializer())
+        sess.run(tf.global_variables_initializer())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+        # start_time = time.time()
+        for i in range(5):
+            print('Step %d' % i)
+            errDis, _ = sess.run([Dis_loss, Dis_optimizer])
+            for _ in range(1):
+                errDec, _ = sess.run([Dec_loss, Dec_optimizer])
 
-
-
-    Dec_loss, Dis_loss, Dec_val, Dis_val = model(real_image, label)
-
-    Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss, var_list=Dec_val)
-    Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss, var_list=Dis_val)
-
-    sess = tf.InteractiveSession()
-    tl.layers.initialize_global_variables(sess)
-
-    model_dir = 'model'
-    save_dir = 'result'
-
+        coord.request_stop()
+        coord.join(threads)
+        sess.close()
 
 if __name__ == '__main__':
     main()
