@@ -1,8 +1,6 @@
 import os
 import tensorflow as tf
 from PIL import Image
-import matplotlib.pyplot as plt
-import numpy as np
 
 cwd = 'data/'
 classes = {'0', '1'}

@@ -3,8 +3,12 @@ import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 slim = tf.contrib.slim
-import numpy as np
-import random
+
+epoch = 50000
+batch_size = 1
+learning_rate = 10e-5
+save_step = 50
+
 
 def upscale2d(x):
     x = x.outputs
@@ -13,6 +17,7 @@ def upscale2d(x):
     x = InputLayer(x, name='upscale_inputs')
     tl.layers.set_name_reuse(True)
     return x
+
 
 def data_loader(filename):
     filename_queue = tf.train.string_input_producer([filename])
@@ -49,7 +54,7 @@ def Encoder(Inputs, is_train=True, reuse=None):
 
     with tf.variable_scope("G", reuse=reuse) as vs:
         tl.layers.set_name_reuse(reuse)
-        n = InputLayer(Inputs, name='in')
+        n = InputLayer(Inputs, name='in_E')
         #256x256
         net_c16 = Conv2d(n, 16, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                    b_init=b_init, name='g_c1')
@@ -102,7 +107,7 @@ def Decoder(inputs, is_train=True, reuse=None):
 
     with tf.variable_scope("D", reuse=reuse) as vs:
         tl.layers.set_name_reuse(reuse)
-        n = InputLayer(inputs, name='in')
+        n = InputLayer(inputs, name='in_D')
         # 16x16
         net_c1 = Conv2d(n, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                    b_init=b_init, name='d_c1')
@@ -160,43 +165,40 @@ def Discriminator(inputs, reuse=False):
     return output, variables
 
 
-def model(x, y):
-    Enc_z_fake, Enc_val_fake = Encoder(x, is_train=True, reuse=False)
-    Enc_z_real, Enc_val_real = Encoder(x, is_train=False, reuse=True)
+def main():
+    iter_counter = 0
+    real_image_data, label_data = data_loader('train.tfrecords')
+    img_batch, label_batch = tf.train.shuffle_batch([real_image_data, label_data],
+                                                    batch_size=batch_size,
+                                                    capacity=200,
+                                                    min_after_dequeue=100
+                                                    )
+    print("img_batch   : %s" % img_batch._shape)
+    print("label_batch : %s" % label_batch._shape)
+
+    #==============================MODEL=====================================
+
+    Enc_z_fake, Enc_val_fake = Encoder(img_batch, is_train=True, reuse=False)
+    Enc_z_real, Enc_val_real = Encoder(img_batch, is_train=False, reuse=True)
 
     Dis_z_fake, Dis_val_fake = Discriminator(Enc_z_fake, reuse=False)
     Dis_z_real, Dis_val_real = Discriminator(Enc_z_real, reuse=True)
 
     Dec_z, Dec_val = Decoder(Enc_z_fake, is_train=True, reuse=False)
 
-    Dis_loss_fake = tl.cost.sigmoid_cross_entropy(Dis_z_fake, y, name='discriminator_loss_fake')
-    Dis_loss_real = tl.cost.sigmoid_cross_entropy(Dis_z_real, y, name='discriminator_loss_real')
+    Dis_loss_fake = tl.cost.sigmoid_cross_entropy(Dis_z_fake, label_batch, name='discriminator_loss_fake')
+    Dis_loss_real = tl.cost.sigmoid_cross_entropy(Dis_z_real, label_batch, name='discriminator_loss_real')
     Dis_loss = Dis_loss_fake+Dis_loss_real
 
-    Dec_loss = tl.cost.mean_squared_error(Dec_z, x)
-    return Dec_loss, Dis_loss, Dec_val, Dis_val_fake
-
-
-def main():
-    learning_rate = 10e-5
-
-    real_image_data, label_data = data_loader('train.tfrecords')
-
-    img_batch, label_batch = tf.train.shuffle_batch([real_image_data, label_data],
-                                                    batch_size=1,
-                                                    capacity=2,
-                                                    min_after_dequeue=1
-                                                    )
-    # img_batch, label_batch = tf.train.batch([real_image_data, label_data], 16)
-    print("img_batch   : %s" % img_batch._shape)
-    print("label_batch : %s" % label_batch._shape)
-
-    Dec_loss, Dis_loss, Dec_val, Dis_val = model(img_batch, label_batch)
+    Dec_loss = tl.cost.mean_squared_error(Dec_z, img_batch)
 
     Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss,
                                                                                                 var_list=Dec_val)
     Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss,
-                                                                                                var_list=Dis_val)
+                                                                                                var_list=Dis_val_fake)
+
+    # ===============================TRAIN=====================================================
+
     with tf.Session() as sess:
         # tl.layers.initialize_global_variables(sess)
         sess.run(tf.local_variables_initializer())
@@ -204,11 +206,13 @@ def main():
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
         # start_time = time.time()
-        for i in range(5):
-            print('Step %d' % i)
+        for i in range(epoch):
+            print('epoch %d' % i)
             errDis, _ = sess.run([Dis_loss, Dis_optimizer])
-            for _ in range(1):
+            for _ in range(2):
                 errDec, _ = sess.run([Dec_loss, Dec_optimizer])
+            print('errDis:', errDis)
+            print('errDec:', errDec)
 
         coord.request_stop()
         coord.join(threads)
