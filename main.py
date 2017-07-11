@@ -1,8 +1,5 @@
-import os
-import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
-slim = tf.contrib.slim
 
 epoch = 50000
 batch_size = 1
