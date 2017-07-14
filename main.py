@@ -1,6 +1,6 @@
 import tensorlayer as tl
 from tensorlayer.layers import *
-
+import numpy as np
 epoch = 50000
 batch_size = 1
 learning_rate = 10e-5
@@ -140,6 +140,7 @@ def Decoder(inputs, is_train=True, reuse=None):
 
     variables = tf.contrib.framework.get_variables(vs)
     output = net_c512.outputs
+    output.outputs = tf.nn.tanh(output)
     return output, variables
 
 
@@ -197,7 +198,6 @@ def main():
     # ===============================TRAIN=====================================================
 
     with tf.Session() as sess:
-        # tl.layers.initialize_global_variables(sess)
         sess.run(tf.local_variables_initializer())
         sess.run(tf.global_variables_initializer())
         coord = tf.train.Coordinator()
@@ -210,6 +210,14 @@ def main():
                 errDec, _ = sess.run([Dec_loss, Dec_optimizer])
             print('errDis:', errDis)
             print('errDec:', errDec)
+
+            iter_counter += 1
+            if np.mod(iter_counter, 1) == 0:
+                img = sess.run([Dec_z])
+                img = img[0]
+
+                tl.visualize.save_images(img, [1,1], './train_{:02d}_{:04d}.png'.format(epoch,i))
+
 
         coord.request_stop()
         coord.join(threads)
