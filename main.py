@@ -1,10 +1,11 @@
 import tensorlayer as tl
 from tensorlayer.layers import *
 import numpy as np
+
 epoch = 50000
 batch_size = 1
 learning_rate = 10e-5
-save_step = 50
+save_step = 500
 
 
 def upscale2d(x):
@@ -18,7 +19,6 @@ def upscale2d(x):
 
 def data_loader(filename):
     filename_queue = tf.train.string_input_producer([filename])
-
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
     features = tf.parse_single_example(serialized_example,
@@ -83,10 +83,11 @@ def Encoder(Inputs, is_train=True, reuse=None):
         #16x16
         net_c512 = Conv2d(net_pool4, 512, (3, 3), (1, 1), act=tf.nn.relu, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='g_c7')
-    variables = tf.contrib.framework.get_variables(vs)
-    output = net_c512.outputs
+    # variables = tf.contrib.framework.get_variables(vs)
+    logits = net_c512.outputs
+    output = net_c512
 
-    return output, variables
+    return output, logits
 
 
 def Decoder(inputs, is_train=True, reuse=None):
@@ -138,10 +139,10 @@ def Decoder(inputs, is_train=True, reuse=None):
         net_c512 = Conv2d(net_bn6, 3, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init,
                                     b_init=b_init, name='d_c7')
 
-    variables = tf.contrib.framework.get_variables(vs)
-    output = net_c512.outputs
-    output.outputs = tf.nn.tanh(output)
-    return output, variables
+    # variables = tf.contrib.framework.get_variables(vs)
+    logits = net_c512.outputs
+    output = net_c512
+    return output, logits
 
 
 def Discriminator(inputs, reuse=False):
@@ -158,9 +159,10 @@ def Discriminator(inputs, reuse=False):
         net_2 = DenseLayer(net_1, n_units=112, act=tf.identity, W_init=w_init, b_init=b_init, name="dense_layer2")
         net_3 = DenseLayer(net_2, n_units=1, act=tf.identity, W_init=w_init, b_init=b_init, name='dense_layer3')
 
-    variables = tf.contrib.framework.get_variables(vs)
-    output = net_3.outputs
-    return output, variables
+    # variables = tf.contrib.framework.get_variables(vs)
+    logits = net_3.outputs
+    output = net_3
+    return output, logits
 
 
 def main():
@@ -176,24 +178,22 @@ def main():
 
     #==============================MODEL=====================================
 
-    Enc_z_fake, Enc_val_fake = Encoder(img_batch, is_train=True, reuse=False)
-    Enc_z_real, Enc_val_real = Encoder(img_batch, is_train=False, reuse=True)
+    Enc_z_fake, Enc_logits_fake = Encoder(img_batch, is_train=True, reuse=False)
+    Enc_z_real, Enc_logits_real = Encoder(img_batch, is_train=False, reuse=True)
 
-    Dis_z_fake, Dis_val_fake = Discriminator(Enc_z_fake, reuse=False)
-    Dis_z_real, Dis_val_real = Discriminator(Enc_z_real, reuse=True)
+    Dis_z_fake, Dis_logits_fake = Discriminator(Enc_logits_fake, reuse=False)
+    Dis_z_real, Dis_logits_real = Discriminator(Enc_logits_real, reuse=True)
 
-    Dec_z, Dec_val = Decoder(Enc_z_fake, is_train=True, reuse=False)
+    Dec_z, Dec_logits = Decoder(Enc_logits_fake, is_train=True, reuse=False)
 
-    Dis_loss_fake = tl.cost.sigmoid_cross_entropy(Dis_z_fake, label_batch, name='discriminator_loss_fake')
-    Dis_loss_real = tl.cost.sigmoid_cross_entropy(Dis_z_real, label_batch, name='discriminator_loss_real')
+    Dis_loss_fake = tl.cost.sigmoid_cross_entropy(Dis_logits_fake, label_batch, name='discriminator_loss_fake')
+    Dis_loss_real = tl.cost.sigmoid_cross_entropy(Dis_logits_real, label_batch, name='discriminator_loss_real')
     Dis_loss = Dis_loss_fake+Dis_loss_real
 
-    Dec_loss = tl.cost.mean_squared_error(Dec_z, img_batch)
+    Dec_loss = tl.cost.mean_squared_error(Dec_logits, img_batch)
 
-    Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss,
-                                                                                                var_list=Dec_val)
-    Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss,
-                                                                                                var_list=Dis_val_fake)
+    Dec_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dec_loss)
+    Dis_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(Dis_loss)
 
     # ===============================TRAIN=====================================================
 
@@ -212,13 +212,16 @@ def main():
             print('errDec:', errDec)
 
             iter_counter += 1
-            if np.mod(iter_counter, 1) == 0:
+            if np.mod(iter_counter, save_step) == 0:
                 img = sess.run([Dec_z])
                 img = img[0]
-
                 tl.visualize.save_images(img, [1,1], './train_{:02d}_{:04d}.png'.format(epoch,i))
-
-
+            
+            if np.mod(iter_counter, save_step) == 0:
+                tl.files.save_npz(Enc_z_fake.all_params, name='Enc_model.npz')
+                tl.files.save_npz(Dec_z.all_params, name='Dec_model.npz')
+                print ('model saved!')
+                
         coord.request_stop()
         coord.join(threads)
         sess.close()
